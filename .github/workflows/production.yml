@@ -11,9 +11,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.10.12] # Define Python versions here
     services:
       postgres:
         image: postgres:latest
@@ -23,14 +20,34 @@ jobs:
           POSTGRES_DB: myappdb
         ports:
           - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+          - 9001:9001
+        options: >-
+          --health-cmd "curl http://localhost:9000/minio/health/ready || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+          --entrypoint "sh -c 'minio server /data --console-address \":9001\"'"
+
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.10.12
           
       - name: Cache Python packages
         uses: actions/cache@v4
@@ -47,7 +64,10 @@ jobs:
           
       - name: Run tests with Pytest
         env:
-          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/myappdb  # Configure the DATABASE_URL environment variable for tests
+          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/myappdb
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
         run: pytest
 
   build-and-push-docker:
@@ -70,8 +90,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: khadhar17/wis_club_api:${{ github.sha }} # Uses the Git SHA for tagging
-          platforms: linux/amd64,linux/arm64 # Multi-platform support
+          tags: khadhar17/wis_club_api:${{ github.sha }}
+          platforms: linux/amd64,linux/arm64
           cache-from: type=registry,ref=khadhar17/wis_club_api:cache
           cache-to: type=inline,mode=max
           
@@ -80,6 +100,6 @@ jobs:
         with:
           image-ref: 'khadhar17/wis_club_api:${{ github.sha }}'
           format: 'table'
-          exit-code: '0' # Fail the job if vulnerabilities are found
+          exit-code: '0'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
