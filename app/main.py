@@ -5,7 +5,9 @@ from starlette.middleware.cors import CORSMiddleware  # Import the CORSMiddlewar
 from app.database import Database
 from app.dependencies import get_settings
 from app.routers import user_routes
+from app.routers import profile
 from app.utils.api_description import getDescription
+
 app = FastAPI(
     title="User Management",
     description=getDescription(),
@@ -17,15 +19,14 @@ app = FastAPI(
     },
     license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
 )
+
 # CORS middleware configuration
-# This middleware will enable CORS and allow requests from any origin
-# It can be configured to allow specific methods, headers, and origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # List of origins that are allowed to access the server, ["*"] allows all
-    allow_credentials=True,  # Support credentials (cookies, authorization headers, etc.)
-    allow_methods=["*"],  # Allowed HTTP methods
-    allow_headers=["*"],  # Allowed HTTP headers
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")
@@ -38,5 +39,6 @@ async def exception_handler(request, exc):
     return JSONResponse(status_code=500, content={"message": "An unexpected error occurred."})
 
 app.include_router(user_routes.router)
+app.include_router(profile.router)
 
 
