@@ -27,7 +27,7 @@ jobs:
           --health-retries 5
 
       minio:
-        image: minio/minio
+        image: minio/minio:latest
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
@@ -39,8 +39,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          --entrypoint minio
-          -- minio server /data --console-address ":9001"
+        command: server /data --console-address ":9001"
 
     steps:
       - uses: actions/checkout@v4
