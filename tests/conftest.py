@@ -238,3 +238,32 @@ def email_service():
         mock_service.send_verification_email.return_value = None
         mock_service.send_user_email.return_value = None
         return mock_service
+
+
+@pytest.fixture(scope="function")
+async def verified_user_with_token(db_session):
+    """
+    Creates a verified user and generates a corresponding email verification token.
+    """
+    from app.services.jwt_service import create_access_token
+
+    # Create a user
+    user_data = {
+        "nickname": fake.user_name(),
+        "first_name": fake.first_name(),
+        "last_name": fake.last_name(),
+        "email": fake.email(),
+        "hashed_password": hash_password("MySuperPassword$1234"),
+        "role": UserRole.AUTHENTICATED,
+        "email_verified": False,  # Not verified yet
+        "is_locked": False,
+    }
+    user = User(**user_data)
+    db_session.add(user)
+    await db_session.commit()
+
+    # Create a fake token (simulate email verification token)
+    token_data = {"sub": str(user.id)}
+    token = create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
+
+    return user, token
